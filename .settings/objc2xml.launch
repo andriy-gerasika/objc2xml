@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/objc2xml/src/com/gerixsoft/objc2xml/ObjectiveCToXml.java"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="1"/>
+</listAttribute>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="com.gerixsoft.objc2xml.ObjectiveCToXml"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="tests/objc/AppKit&#10;tests/xml/AppKit"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="objc2xml"/>
+</launchConfiguration>
