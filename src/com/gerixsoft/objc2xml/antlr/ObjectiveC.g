@@ -10,14 +10,32 @@
 grammar ObjectiveC;
 options {
   backtrack=true;
+	language=Java;
   output=AST;
 }
 
-translation_unit: external_declaration+ EOF;
+tokens
+{
+	XML_ELEMENT;
+	XML_ATTRIBUTE;
+}
+
+@lexer::header
+{
+package com.gerixsoft.objc2xml.antlr;
+}
+
+@header
+{
+package com.gerixsoft.objc2xml.antlr;
+}
+
+translation_unit: external_declaration+
+ -> ^(XML_ELEMENT["objective-c"] external_declaration+);
 
 external_declaration:
-COMMENT | LINE_COMMENT | preprocessor_declaration
-|function_definition
+/*preprocessor_declaration
+| */function_definition
 | declaration 
 | class_interface
 | class_implementation
@@ -26,7 +44,7 @@ COMMENT | LINE_COMMENT | preprocessor_declaration
 | protocol_declaration
 | protocol_declaration_list
 | class_declaration_list;
-
+/*
 preprocessor_declaration:
 '#import' file_specification
 | '#include' file_specification
@@ -36,25 +54,26 @@ preprocessor_declaration:
 | '#undef' expression
 | '#ifndef' expression
 | '#endif';
-
+*/
 file_specification: ('<'|'"')(IDENTIFIER ('/' | '\\' | '.')?)+ ('>' | '"');
 
-macro_specification: '.+';
+macro_specification: IDENTIFIER;
 
 class_interface:
 	'@interface'
 	(
-	class_name (':' superclass_name)?
-	( protocol_reference_list )?
-	( instance_variables )?
-	( interface_declaration_list )?
+	class_name=IDENTIFIER (':' superclass_name=IDENTIFIER)?
+	//( protocol_reference_list )?
+	//( instance_variables )?
+	//( interface_declaration_list )?
 	)
-	'@end';
+	'@end'
+ -> ^(XML_ELEMENT["class"] ^(XML_ATTRIBUTE["name"] $class_name));// interface_declaration_list);
 
 category_interface:
 	'@interface'
 	(
-	class_name '(' category_name ')'
+	class_name=IDENTIFIER '(' category_name ')'
 	( protocol_reference_list )?
 	( interface_declaration_list )?
 	)
@@ -63,14 +82,14 @@ category_interface:
 class_implementation:
 	'@implementation'
 	(
-	class_name ( ':' superclass_name )?
+	class_name=IDENTIFIER ( ':' superclass_name=IDENTIFIER )?
 	( implementation_definition_list )?
 	)
 	'@end';
 
 category_implementation:
 	'@implementation'(
-	class_name '(' category_name ')'
+	class_name=IDENTIFIER '(' category_name ')'
 	( implementation_definition_list )?
 	)'@end';
 
@@ -89,19 +108,13 @@ class_declaration_list:
 	;
 
 class_list:
-	class_name (',' class_name)*;
+	class_name=IDENTIFIER (',' class_name=IDENTIFIER)*;
 
 protocol_reference_list:
 	('<' protocol_list '>');
 
 protocol_list:
 	protocol_name (',' protocol_name)*;
-
-class_name:
-	IDENTIFIER;
-
-superclass_name:
-	IDENTIFIER;
 
 category_name:
 	IDENTIFIER;
@@ -132,10 +145,13 @@ class_method_declaration:
 
 instance_method_declaration:
 	('-' method_declaration)
+ -> ^(XML_ELEMENT["message"] method_declaration)
 	;
 
 method_declaration:
-	( method_type )? method_selector ';';
+	( method_type )? method_selector ';'
+ -> ^(XML_ATTRIBUTE["returns"] method_type) method_selector
+;
 
 implementation_definition_list:
 	(function_definition | declaration | class_method_definition | instance_method_definition)+;
@@ -152,22 +168,26 @@ method_definition:
 	(method_type)? method_selector (init_declarator_list)? compound_statement;
 
 method_selector:
-	selector |(keyword_declarator+ (parameter_list)? )
+	selector keyword_declarator* (parameter_list)? 
+ -> ^(XML_ATTRIBUTE["name"] selector) keyword_declarator* parameter_list?
 	;
 
 keyword_declarator:
-	selector? ':' method_type* IDENTIFIER;
+	':' method_type IDENTIFIER
+ -> ^(XML_ELEMENT["argument"] ^(XML_ATTRIBUTE["type"] method_type) ^(XML_ATTRIBUTE["name"]IDENTIFIER))
+;
 
 selector:
 IDENTIFIER;
 
 method_type:
-'(' type_name ')';
+'(' type_name ')'
+  -> type_name;
 
 type_specifier:
 'void' | 'char' | 'short' | 'int' | 'long' | 'float' | 'double' | 'signed' | 'unsigned' 
 	|	('id' ( protocol_reference_list )? )
-	|	(class_name ( protocol_reference_list )?)
+	|	(class_name=IDENTIFIER ( protocol_reference_list )?)
 	|	struct_or_union_specifier
 	|	enum_specifier 
 	|	IDENTIFIER;
@@ -195,7 +215,7 @@ message_expression:
 
 receiver:
 	expression
-	| class_name 
+	| class_name=IDENTIFIER 
 	| 'super';
 
 message_selector:
@@ -462,13 +482,17 @@ UnicodeEscape
     :   '\\' 'u' HexDigit HexDigit HexDigit HexDigit
     ;
 
-WS  :  (' '|'\r'|'\t'|'\u000C'|'\n') {channel=99;}
+WS  :  (' '|'\r'|'\t'|'\u000C'|'\n') { $channel=HIDDEN; }
     ;
 
 COMMENT
-    :   '/*' ( options {greedy=false;} : . )* '*/'
+    :   '/*' ( options {greedy=false;} : . )* '*/' { $channel=HIDDEN; }
     ;
 
 LINE_COMMENT
-    : '//' ~('\n'|'\r')* '\r'? '\n'
+    : '//' ~('\n'|'\r')* '\r'? '\n' { $channel=HIDDEN; }
+    ;
+
+LINE_COMMAND 
+    : '#' ~('\n'|'\r')* '\r'? '\n' {$channel=HIDDEN;}
     ;
